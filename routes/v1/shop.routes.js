@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 const upload = require('../../middlewares/upload');
 const auth = require('../../middlewares/auth');
@@ -8,7 +9,7 @@ const requireRole = require('../../middlewares/requirerole');
 const Shop = require('../../models/shops');
 
 
-
+//create a new shop
 router.post('/', auth, requireRole('SHOP'), upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), 
     async (req, res) => {
 
