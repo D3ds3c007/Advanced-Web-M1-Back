@@ -5,6 +5,7 @@ const router = express.Router();
 const Shop = require('../../models/shops');
 const Category = require('../../models/categories');
 const requireOwner = require('../../middlewares/requireOwner');
+const requireOwnerShop = require('../../middlewares/requireOwnerShop');
 
 module.exports = router;
 const mongoose = require('mongoose');
@@ -236,5 +237,36 @@ router.get('/top', auth, requireRole('SHOP', 'BUYER', 'ADMIN'), requireOwner(), 
   }
 }
 );
+
+// Get products with lower stock for a shop ✅
+router.get('/low-stock/shop/:shopId', auth, requireRole('SHOP'), requireOwnerShop(), async (req, res) => {
+  try {
+    const shopId = req.params.shopId;
+    
+    const lowStockProducts = await Product.find({
+        shopId: new mongoose.Types.ObjectId(shopId),
+        stock: { $lte: 5 },
+        status: 'ACTIVE'
+    }).sort({ stock: 1 });
+
+    // If no low stock products, return the lowest stock product instead
+    if (lowStockProducts.length === 0) {
+      const lowestStockProduct = await Product.findOne({ shopId, status: 'ACTIVE' }).sort({ stock: 1 });
+
+      if (!lowestStockProduct) {
+        return res.status(404).json({ message: "No products found for this shop" });
+      }
+
+      lowStockProducts.push(lowestStockProduct);
+    }
+
+    res.json({
+        count: lowStockProducts.length,
+        products: lowStockProducts
+        });
+    } catch (err) {    console.error("Error fetching low stock products:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
 
 module.exports = router;
