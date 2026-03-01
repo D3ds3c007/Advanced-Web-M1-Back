@@ -96,7 +96,8 @@ router.post('/checkout', auth, requireRole('BUYER'), verifyProduct, async (req, 
         items: orderItems,
         total,
         revenue,
-        orderId
+        orderId,
+        paymentMethod: req.body.buyer.paymentMethod
       });
 
       ordersCreated.push(order);
@@ -202,6 +203,7 @@ router.patch('/:id', auth, requireRole('SHOP', 'BUYER'), async (req, res) => {
 
     //BUYER RULE
     if (req.user.role === 'BUYER') {
+      console.log(`Buyer ${req.user.id} attempting to change order ${id} from ${current} to ${next}`);
       // Check ownership
       if (order.buyerId.toString() !== req.user.id) {
         return res.status(403).json({ message: "You do not have permission to update this order" });
@@ -236,11 +238,16 @@ router.patch('/:id', auth, requireRole('SHOP', 'BUYER'), async (req, res) => {
     //SHOP RULE
     if (req.user.role === 'SHOP') {
       // Check shop ownership
-      // const shopIds = req.user.shops.map(id => id.toString());
-      const shopIds = (req.user.shops || []).map(s => (s._id || s).toString());
-      if (!shopIds.includes(order.shopId.toString())) {
-        return res.status(403).json({ message: "You do not have permission to update this order" });
-      }
+
+      const isOwner = req.user.shops.some(
+    shop => shop._id.toString() === order.shopId.toString()
+    );
+
+    if (!isOwner) {
+    return res.status(403).json({ error: 'You do not have permission to update this order' });
+    }
+
+     
 
       // Validate allowed transitions
       const allowedNext = allowedTransitions[current];

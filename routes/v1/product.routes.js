@@ -42,7 +42,7 @@ const parseImagesArray = (value) => {
   }
 };
 
-const toProductImageUrl = (file) => `uploads/products/${file.filename}`;
+const toProductImageUrl = (file) => `products/${file.filename}`;
 
 const coerceProductBody = (body) => {
   const next = { ...body };

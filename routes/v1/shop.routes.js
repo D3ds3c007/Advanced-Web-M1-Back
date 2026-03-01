@@ -155,7 +155,13 @@ router.get('/all', auth, requireRole('ADMIN'), async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [shops, totalShops] = await Promise.all([
-      Shop.find(filters).sort(sortObj).skip(skip).limit(limit).lean(),
+      Shop.find(filters)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .populate('ownerUserId', 'fullName')
+        .populate('categoryId', 'name')
+        .lean(),
       Shop.countDocuments(filters),
     ]);
 
