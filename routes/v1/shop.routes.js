@@ -23,8 +23,8 @@ router.post('/', auth, requireRole('SHOP'), upload.fields([{ name: 'logo', maxCo
         const shop = new Shop({
             name: req.body.name,
             description: req.body.description,
-            logoUrl: logo ? logo.path : "uploads\\shops\\logos\\default.png",
-            coverUrl: cover ? cover.path : null,
+            logoUrl: logo ? logo.filename : "default.png",
+            coverUrl: cover ? cover.filename : null,
             contact: {
                 phone: req.body.phone,
                 email: req.body.email,
@@ -155,7 +155,13 @@ router.get('/all', auth, requireRole('ADMIN'), async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [shops, totalShops] = await Promise.all([
-      Shop.find(filters).sort(sortObj).skip(skip).limit(limit).lean(),
+      Shop.find(filters)
+        .sort(sortObj)
+        .skip(skip)
+        .limit(limit)
+        .populate('ownerUserId', 'fullName')
+        .populate('categoryId', 'name')
+        .lean(),
       Shop.countDocuments(filters),
     ]);
 
@@ -336,7 +342,7 @@ router.get('/:shopId/top-customers', auth, requireRole('SHOP'), requireOwnerShop
             { $project: {
                 _id: 0,
                 customerId: "$_id",
-                name: "$customer.name",
+                name: "$customer.fullName",
                 email: "$customer.email",
                 totalSold: 1,
                 totalRevenue: 1
@@ -388,6 +394,57 @@ router.get('/:shopId/total-revenue', auth, requireRole('SHOP'), requireOwnerShop
         res.json({ totalRevenue });
     } catch (err) {
         console.error("Error fetching revenue:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get total revenue for a shop as a monthly review ✅
+router.get('/:shopId/monthly-revenue', auth, requireRole('SHOP'), requireOwnerShop(), async (req, res) => {
+    try {
+        const shopId = req.params.shopId;
+
+        // Get year from query OR default to current year
+        const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
+
+        const startDate = new Date(year, 0, 1);   // Jan 1, YEAR
+        const endDate = new Date(year + 1, 0, 1); // Jan 1, NEXT YEAR
+
+        const match = {
+            shopId: new mongoose.Types.ObjectId(shopId),
+            createdAt: { $gte: startDate, $lt: endDate }
+        };
+
+        const revenueData = await Order.aggregate([
+            { 
+                $match: { 
+                    ...match, 
+                    status: { $in: ['CONFIRMED', 'PREPARING', 'READY', 'DELIVERED'] } 
+                } 
+            },
+            {
+                $group: {
+                    _id: { month: { $month: "$createdAt" } },
+                    totalRevenue: { $sum: "$revenue" }
+                }
+            },
+            { $sort: { "_id.month": 1 } }
+        ]);
+
+        // Build an array 12 months long so chart always has full x-axis
+        const monthlyRevenue = Array.from({ length: 12 }, (_, i) => {
+            const found = revenueData.find(r => r._id.month === i + 1);
+            return {
+                month: i + 1,
+                totalRevenue: found ? found.totalRevenue : 0
+            };
+        });
+
+        res.json({
+            monthlyRevenue
+        });
+
+    } catch (err) {
+        console.error("Error fetching monthly revenue:", err);
         res.status(500).json({ message: err.message });
     }
 });

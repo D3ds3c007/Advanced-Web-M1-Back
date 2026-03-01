@@ -25,8 +25,15 @@ router.post('/login', (req, res) => {
             //fetch shops of the user if role is SHOP
             let shops = [];
             if (user.role.toUpperCase() === 'SHOP') {
-                shops = await require('../../models/shops').find({ ownerUserId: user._id }).select('_id').lean();
-                shops = shops.map(s => s._id.toString());
+                shops = await require('../../models/shops').find({ ownerUserId: user._id }).lean();
+                //change the field categoryId to an object with id and name in each shop
+                for (let shop of shops) {
+                    if (shop.categoryId) {
+                        const category = await require('../../models/categories').findById(shop.categoryId);
+                        shop.category = { id: category._id, name: category.name };
+                        delete shop.categoryId;
+                    }
+                }
             }
             const accessToken = signAccessToken(user, shops);
     
