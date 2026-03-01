@@ -169,6 +169,8 @@ router.get('/all', auth, requireRole('ADMIN'), async (req, res) => {
     console.error("Error fetching shops:", err);
     res.status(500).json({ error: 'Failed to fetch shops', details: err.message });
   }
+
+});
 // Get total number of shops
 router.get('/KPIs', auth, requireRole('ADMIN'), async (req, res) => {
     try {
@@ -239,6 +241,9 @@ router.patch('/:id/status', auth, requireRole('ADMIN'), async (req,res) => {
     } catch (err) {
         console.error("Error updating shop status", err);
         res.status(500).json({ error: 'Failed to update shop status', details: err.message });
+    }
+});
+
 // Get top 5 products by quantity sold for a shop ✅
 router.get('/:shopId/top-products-by-revenue', auth, requireRole('SHOP'), requireOwnerShop(), async (req, res) => {
     try {
