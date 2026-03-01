@@ -11,9 +11,19 @@ module.exports = router;
 const mongoose = require('mongoose');
 
 //GET all Categories
-router.get('/', auth, requireRole('ADMIN'), async (req,res) => {
+router.get('/', auth, requireRole('ADMIN','SHOP'), async (req,res) => {
     try {
+      console.log("Fetching categories for user:", req.user);
         const categories = await Category.find();
+        if (req.user.role === 'SHOP') {
+          //get parameter type from query
+          const type = req.query.type;
+          if (!type) {
+            return res.status(400).json({ message: 'Type query parameter is required' });
+          }
+          //return only categories with the specified type and isActive true
+          return res.json(categories.filter(c => c.type === type.toUpperCase() && c.isActive));
+        }
         res.json(categories);
     } catch (err) {
         res.status(500).json({ message: err.message});
