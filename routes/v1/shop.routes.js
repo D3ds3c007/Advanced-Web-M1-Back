@@ -12,7 +12,6 @@ const requireOwnerShop = require('../../middlewares/requireOwnerShop');
 const Product = require('../../models/products');
 const Order = require('../../models/orders');
 
-
 //create a new shop
 router.post('/', auth, requireRole('SHOP'), upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'cover', maxCount: 1 }]), 
     async (req, res) => {
@@ -76,20 +75,6 @@ router.post('/', auth, requireRole('SHOP'), upload.fields([{ name: 'logo', maxCo
     }
 });
 
-//get shop by id
-router.get('/:id', async (req, res) => {
-    try {
-        //convert id to ObjectId
-        const shop = await Shop.findById(new mongoose.Types.ObjectId(req.params.id));
-        if (!shop) {
-            return res.status(404).json({ error: 'Shop not found' });
-        }
-        res.status(200).json({ shop });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch shop', details: error.message });
-    }
-});
-
 //get shops with query ?status=active&categoryId=&q=&page=
 router.get('/', async (req, res) => {
     try {
@@ -116,6 +101,44 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get total number of shops
+router.get('/KPIs', auth, requireRole('ADMIN'), async (req, res) => {
+    try {
+        const [ totalShops, totalActiveShops, totalPendingShops, totalRejectedShops, totalSuspendedShops ] = await Promise.all([
+            Shop.countDocuments(),
+            Shop.countDocuments({ status: 'ACTIVE'}),
+            Shop.countDocuments( { status: 'PENDING' }),
+            Shop.countDocuments({ status: 'REJECTED' }),
+            Shop.countDocuments({ status: 'SUSPENDED' })
+        ]);
+
+        return res.status(200).json({
+            totalShops,
+            totalActiveShops,
+            totalPendingShops,
+            totalRejectedShops,
+            totalSuspendedShops
+        });
+    }
+    catch (err)
+    {
+        res.status(500).json({ error: 'Failed to fetch total number of shops', details: err.message});
+    }
+});
+
+//get shop by id
+router.get('/:id', async (req, res) => {
+    try {
+        //convert id to ObjectId
+        const shop = await Shop.findById(new mongoose.Types.ObjectId(req.params.id));
+        if (!shop) {
+            return res.status(404).json({ error: 'Shop not found' });
+        }
+        res.status(200).json({ shop });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch shop', details: error.message });
+    }
+});
 
 // Get top 5 products by quantity sold for a shop ✅
 router.get('/:shopId/top-products-by-revenue', auth, requireRole('SHOP'), requireOwnerShop(), async (req, res) => {
