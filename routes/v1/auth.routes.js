@@ -40,8 +40,7 @@ router.post('/login', (req, res) => {
         
             res.cookie('authorization', accessToken, {
                 httpOnly: true,
-                secure: true,
-                sameSite: 'none',
+                secure: false,
                 path: '/',
                 maxAge: 24 * 60 * 60 * 1000 // 1 day
             });
